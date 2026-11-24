@@ -5,8 +5,8 @@ import { authenticateJWT, requireRoles } from '../middlewares/auth';
 
 const router = Router();
 
-// Todas las rutas de gestión de usuarios requieren autenticación y rol de 'administrador'
-router.use(authenticateJWT, requireRoles(['administrador']));
+// Todas las rutas de gestión de usuarios requieren autenticación y rol de 'admin' o 'administrador'
+router.use(authenticateJWT, requireRoles(['admin', 'administrador']));
 
 // 1. Listar todos los usuarios con su rol
 router.get('/', async (req: Request, res: Response): Promise<void> => {

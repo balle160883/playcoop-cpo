@@ -453,7 +453,8 @@
 
       // Mostrar pestaña de usuarios solo para administradores
       const usersBtn = document.getElementById('users-tab-btn');
-      if (currentUser.role === 'administrador') {
+      const role = (currentUser.role || '').toLowerCase();
+      if (role === 'admin' || role === 'administrador') {
         usersBtn.style.display = 'inline-block';
         loadUsers();
       } else {
