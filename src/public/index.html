@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Administrativo - PlayCoop (Caja Popular Oblatos)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #E30613;
+      --primary-dark: #B71C1C;
+      --dark-bg: #0B132B;
+      --card-bg: #1C2541;
+      --surface: #1E293B;
+      --text: #FFFFFF;
+      --text-muted: #94A3B8;
+      --gold: #FFD700;
+      --green: #10B981;
+      --border: rgba(255, 255, 255, 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+    body { background-color: var(--dark-bg); color: var(--text); min-height: 100vh; }
+
+    /* Login */
+    #login-view {
+      display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px;
+    }
+    .login-card {
+      background: var(--card-bg); width: 100%; max-width: 440px; padding: 40px;
+      border-radius: 20px; border: 1px solid var(--border); box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+    .login-card h2 { margin-bottom: 8px; color: var(--gold); }
+    .login-card p { color: var(--text-muted); font-size: 14px; margin-bottom: 25px; }
+
+    .input-group { margin-bottom: 20px; text-align: left; }
+    .input-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+    .input-group input, .input-group select, .input-group textarea {
+      width: 100%; padding: 12px 16px; border-radius: 10px; background: var(--dark-bg);
+      border: 1px solid var(--border); color: #fff; font-size: 14px; outline: none;
+    }
+    .input-group input:focus { border-color: var(--primary); }
+
+    .btn {
+      width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-gold { background: var(--gold); color: #000; margin-top: 10px; }
+
+    /* Dashboard */
+    #dashboard-view { display: none; }
+    header {
+      background: var(--surface); padding: 16px 30px; display: flex; align-items: center;
+      justify-content: space-between; border-bottom: 1px solid var(--border);
+    }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .brand-title { font-size: 20px; font-weight: 700; color: #fff; }
+    .badge {
+      padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+    }
+    .badge-marketing { background: #2563EB; color: #fff; }
+    .badge-admin { background: var(--primary); color: #fff; }
+    .btn-logout { background: transparent; border: 1px solid var(--border); color: #fff; padding: 6px 14px; border-radius: 8px; cursor: pointer; }
+
+    /* Nav Tabs */
+    .tabs-bar {
+      display: flex; gap: 10px; padding: 15px 30px; background: rgba(30, 41, 59, 0.5);
+      border-bottom: 1px solid var(--border); overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 10px 18px; border-radius: 10px; background: transparent; border: none;
+      color: var(--text-muted); font-size: 14px; font-weight: 500; cursor: pointer;
+    }
+    .tab-btn.active { background: var(--primary); color: #fff; }
+
+    /* Content Area */
+    .content-area { padding: 30px; max-width: 1200px; margin: 0 auto; }
+    .panel-card {
+      background: var(--card-bg); border-radius: 16px; border: 1px solid var(--border);
+      padding: 24px; margin-bottom: 25px;
+    }
+    .panel-card h3 { margin-bottom: 15px; font-size: 18px; color: var(--gold); }
+
+    .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .grid-full { grid-column: span 2; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
+    th { color: var(--text-muted); font-weight: 600; }
+    .btn-delete { background: #EF4444; color: #fff; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+
+    .alert { padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; display: none; }
+    .alert-success { background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid #10B981; }
+    .alert-error { background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid #EF4444; }
+  </style>
+</head>
+<body>
+
+  <!-- Vista 1: Login -->
+  <div id="login-view">
+    <div class="login-card">
+      <h2>PlayCoop CMS</h2>
+      <p>Panel de Administración y Mercadotecnia - Caja Popular Oblatos</p>
+      
+      <div id="login-alert" class="alert alert-error"></div>
+
+      <form id="login-form">
+        <div class="input-group">
+          <label>Correo Electrónico</label>
+          <input type="email" id="login-email" placeholder="mercadotecnia@playcoop.com.mx" required>
+        </div>
+        <div class="input-group">
+          <label>Contraseña</label>
+          <input type="password" id="login-password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Ingresar al Panel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Vista 2: Dashboard -->
+  <div id="dashboard-view">
+    <header>
+      <div class="header-left">
+        <span class="brand-title">PlayCoop Admin</span>
+        <span id="user-role-badge" class="badge"></span>
+        <span id="user-name-label" style="font-size: 13px; color: var(--text-muted);"></span>
+      </div>
+      <button class="btn-logout" onclick="logout()">Cerrar Sesión</button>
+    </header>
+
+    <div class="tabs-bar">
+      <button class="tab-btn active" onclick="switchTab('media-tab')">🎬 Videos y Multimedia</button>
+      <button class="tab-btn" onclick="switchTab('trivias-tab')">❓ Trivias RachaCoop</button>
+      <button class="tab-btn" onclick="switchTab('events-tab')">📅 Eventos CPO</button>
+      <button class="tab-btn" onclick="switchTab('ranking-tab')">🏆 Ranking del Juego</button>
+    </div>
+
+    <div class="content-area">
+      <div id="action-alert" class="alert"></div>
+
+      <!-- TAB 1: Multimedia (Mercadotecnia) -->
+      <div id="media-tab" class="tab-content">
+        <div class="panel-card">
+          <h3>Subir Nuevo Video o Imagen para la App Móvil</h3>
+          <form id="media-upload-form" enctype="multipart/form-data">
+            <div class="grid-form">
+              <div class="input-group">
+                <label>Categoría</label>
+                <select id="media-category" required>
+                  <option value="capsula_video">Cápsula Educativa (Video MP4)</option>
+                  <option value="banner_home">Banner Promocional (Imagen)</option>
+                  <option value="promocion">Aviso Emergente / Pop-up</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Título del Recurso</label>
+                <input type="text" id="media-title" placeholder="Ej: Cápsula 6: Tu Primer Crédito" required>
+              </div>
+              <div class="input-group grid-full">
+                <label>Descripción corta para los socios</label>
+                <input type="text" id="media-desc" placeholder="Aprende sobre cómo solicitar tu crédito cooperativo...">
+              </div>
+              <div class="input-group grid-full">
+                <label>Archivo (Video MP4 o Imagen PNG/JPG)</label>
+                <input type="file" id="media-file" accept="video/mp4,image/png,image/jpeg,image/webp" required>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Publicar en la App Móvil</button>
+          </form>
+        </div>
+
+        <div class="panel-card">
+          <h3>Contenido Multimedia Activo en la App</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Categoría</th>
+                <th>Título</th>
+                <th>Archivo</th>
+                <th>Fecha</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="media-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 2: Trivias RachaCoop -->
+      <div id="trivias-tab" class="tab-content" style="display: none;">
+        <div class="panel-card">
+          <h3>Crear Nueva Pregunta para RachaCoop</h3>
+          <form id="trivia-form">
+            <div class="grid-form">
+              <div class="input-group grid-full">
+                <label>Pregunta</label>
+                <input type="text" id="trivia-q" placeholder="¿Qué porcentaje mínimo de tus ingresos es recomendable ahorrar?" required>
+              </div>
+              <div class="input-group">
+                <label>Opción A</label>
+                <input type="text" id="trivia-a" placeholder="Al menos 10%" required>
+              </div>
+              <div class="input-group">
+                <label>Opción B</label>
+                <input type="text" id="trivia-b" placeholder="0%" required>
+              </div>
+              <div class="input-group">
+                <label>Opción C</label>
+                <input type="text" id="trivia-c" placeholder="Gastar todo primero">
+              </div>
+              <div class="input-group">
+                <label>Opción D</label>
+                <input type="text" id="trivia-d" placeholder="Pedir prestado para ahorrar">
+              </div>
+              <div class="input-group">
+                <label>Opción Correcta</label>
+                <select id="trivia-correct" required>
+                  <option value="A">Opción A</option>
+                  <option value="B">Opción B</option>
+                  <option value="C">Opción C</option>
+                  <option value="D">Opción D</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Explicación Didáctica</label>
+                <input type="text" id="trivia-expl" placeholder="¡Exacto! El 10% te ayuda a formar un fondo de ahorro.">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Guardar Pregunta en la Base de Datos</button>
+          </form>
+        </div>
+
+        <div class="panel-card">
+          <h3>Banco de Preguntas Actuales</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Pregunta</th>
+                <th>Respuesta Correcta</th>
+                <th>Puntos</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="trivias-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 3: Eventos -->
+      <div id="events-tab" class="tab-content" style="display: none;">
+        <div class="panel-card">
+          <h3>Publicar Evento o Promoción de Caja Popular Oblatos</h3>
+          <form id="event-form">
+            <div class="grid-form">
+              <div class="input-group">
+                <label>Título del Evento</label>
+                <input type="text" id="event-title" placeholder="Sorteo Anual de Ahorro Infantil" required>
+              </div>
+              <div class="input-group">
+                <label>Fecha del Evento</label>
+                <input type="date" id="event-date">
+              </div>
+              <div class="input-group grid-full">
+                <label>Descripción</label>
+                <textarea id="event-desc" rows="3" placeholder="Detalles de la promoción..."></textarea>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Publicar Evento</button>
+          </form>
+        </div>
+
+        <div class="panel-card">
+          <h3>Eventos Publicados</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Título</th>
+                <th>Fecha</th>
+                <th>Descripción</th>
+              </tr>
+            </thead>
+            <tbody id="events-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 4: Ranking -->
+      <div id="ranking-tab" class="tab-content" style="display: none;">
+        <div class="panel-card">
+          <h3>Tabla de Clasificación del Juego (Alcancía PlayCoop)</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Posición</th>
+                <th>Socio</th>
+                <th>Máximo Puntaje</th>
+                <th>Nivel Alcanzado</th>
+              </tr>
+            </thead>
+            <tbody id="ranking-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let authToken = localStorage.getItem('playcoop_token');
+    let currentUser = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (authToken) {
+        verifySession();
+      } else {
+        showLogin();
+      }
+    });
+
+    async function verifySession() {
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+          currentUser = await res.json();
+          showDashboard();
+        } else {
+          logout();
+        }
+      } catch (e) {
+        logout();
+      }
+    }
+
+    // Login Form Submit
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      const alert = document.getElementById('login-alert');
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          authToken = data.token;
+          currentUser = data.user;
+          localStorage.setItem('playcoop_token', authToken);
+          showDashboard();
+        } else {
+          alert.innerText = data.error || 'Credenciales incorrectas';
+          alert.style.display = 'block';
+        }
+      } catch (err) {
+        alert.innerText = 'Error al conectar con el servidor';
+        alert.style.display = 'block';
+      }
+    });
+
+    function showDashboard() {
+      document.getElementById('login-view').style.display = 'none';
+      document.getElementById('dashboard-view').style.display = 'block';
+
+      const badge = document.getElementById('user-role-badge');
+      badge.innerText = currentUser.role;
+      badge.className = `badge badge-${currentUser.role}`;
+      document.getElementById('user-name-label').innerText = currentUser.full_name || currentUser.email;
+
+      loadMedia();
+      loadTrivias();
+      loadEvents();
+      loadRanking();
+    }
+
+    function showLogin() {
+      document.getElementById('login-view').style.display = 'flex';
+      document.getElementById('dashboard-view').style.display = 'none';
+    }
+
+    function logout() {
+      localStorage.removeItem('playcoop_token');
+      authToken = null;
+      currentUser = null;
+      showLogin();
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).style.display = 'block';
+      event.target.classList.add('active');
+    }
+
+    // Media
+    async function loadMedia() {
+      const res = await fetch('/api/media');
+      const data = await res.json();
+      const tbody = document.getElementById('media-table-body');
+      tbody.innerHTML = data.map(m => `
+        <tr>
+          <td><span class="badge badge-marketing">${m.category}</span></td>
+          <td><strong>${m.title}</strong></td>
+          <td><a href="${m.file_url}" target="_blank" style="color: var(--gold)">Ver Archivo</a></td>
+          <td>${new Date(m.created_at).toLocaleDateString()}</td>
+          <td><button class="btn-delete" onclick="deleteMedia(${m.id})">Desactivar</button></td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('media-upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData();
+      formData.append('category', document.getElementById('media-category').value);
+      formData.append('title', document.getElementById('media-title').value);
+      formData.append('description', document.getElementById('media-desc').value);
+      formData.append('file', document.getElementById('media-file').files[0]);
+
+      const res = await fetch('/api/media/upload', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${authToken}` },
+        body: formData
+      });
+
+      if (res.ok) {
+        showAlert('Archivo publicado con éxito en la aplicación móvil', 'success');
+        document.getElementById('media-upload-form').reset();
+        loadMedia();
+      } else {
+        showAlert('Error al subir el archivo', 'error');
+      }
+    });
+
+    async function deleteMedia(id) {
+      if (!confirm('¿Deseas retirar este recurso de la app móvil?')) return;
+      await fetch(`/api/media/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      loadMedia();
+    }
+
+    // Trivias
+    async function loadTrivias() {
+      const res = await fetch('/api/trivias');
+      const data = await res.json();
+      const tbody = document.getElementById('trivias-table-body');
+      tbody.innerHTML = data.map(t => `
+        <tr>
+          <td>${t.question}</td>
+          <td><strong style="color: var(--green)">${t.correct_option}</strong></td>
+          <td>${t.points_reward} pts</td>
+          <td><button class="btn-delete" onclick="deleteTrivia(${t.id})">Eliminar</button></td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('trivia-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        question: document.getElementById('trivia-q').value,
+        optionA: document.getElementById('trivia-a').value,
+        optionB: document.getElementById('trivia-b').value,
+        optionC: document.getElementById('trivia-c').value,
+        optionD: document.getElementById('trivia-d').value,
+        correctOption: document.getElementById('trivia-correct').value,
+        explanation: document.getElementById('trivia-expl').value
+      };
+
+      const res = await fetch('/api/trivias', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        showAlert('Pregunta agregada a RachaCoop exitosamente', 'success');
+        document.getElementById('trivia-form').reset();
+        loadTrivias();
+      }
+    });
+
+    async function deleteTrivia(id) {
+      if (!confirm('¿Deseas eliminar esta pregunta?')) return;
+      await fetch(`/api/trivias/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      loadTrivias();
+    }
+
+    // Eventos
+    async function loadEvents() {
+      const res = await fetch('/api/events');
+      const data = await res.json();
+      const tbody = document.getElementById('events-table-body');
+      tbody.innerHTML = data.map(ev => `
+        <tr>
+          <td><strong>${ev.title}</strong></td>
+          <td>${ev.event_date || 'Sin fecha'}</td>
+          <td>${ev.description || ''}</td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('event-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        title: document.getElementById('event-title').value,
+        eventDate: document.getElementById('event-date').value,
+        description: document.getElementById('event-desc').value
+      };
+
+      const res = await fetch('/api/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        showAlert('Evento publicado con éxito', 'success');
+        document.getElementById('event-form').reset();
+        loadEvents();
+      }
+    });
+
+    // Ranking
+    async function loadRanking() {
+      const res = await fetch('/api/game/ranking');
+      const data = await res.json();
+      const tbody = document.getElementById('ranking-table-body');
+      tbody.innerHTML = data.map((r, i) => `
+        <tr>
+          <td><strong>#${i + 1}</strong></td>
+          <td>${r.full_name || 'Socio'}</td>
+          <td><strong style="color: var(--gold)">${r.highest_score} pts</strong></td>
+          <td>Nivel ${r.max_level || 1}</td>
+        </tr>
+      `).join('');
+    }
+
+    function showAlert(msg, type) {
+      const a = document.getElementById('action-alert');
+      a.className = `alert alert-${type}`;
+      a.innerText = msg;
+      a.style.display = 'block';
+      setTimeout(() => a.style.display = 'none', 4000);
+    }
+  </script>
+</body>
+</html>

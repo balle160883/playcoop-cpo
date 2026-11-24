@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  playcoop-backend:
+    build: .
+    container_name: playcoop_backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=${PORT:-3000}
+      - DB_HOST=${DB_HOST:-31.97.144.6}
+      - DB_PORT=${DB_PORT:-5441}
+      - DB_NAME=${DB_NAME:-playcoop-cpo}
+      - DB_USER=${DB_USER:-cpo-dev1}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - NODE_ENV=${NODE_ENV:-production}
+    volumes:
+      - ./uploads:/app/uploads
