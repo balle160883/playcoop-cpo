@@ -7,6 +7,7 @@ import mediaRoutes from './routes/media.routes';
 import triviaRoutes from './routes/trivia.routes';
 import gameRoutes from './routes/game.routes';
 import eventRoutes from './routes/events.routes';
+import userRoutes from './routes/users.routes';
 import { query } from './config/db';
 
 dotenv.config();
@@ -29,6 +30,7 @@ app.use('/api/media', mediaRoutes);
 app.use('/api/trivias', triviaRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check para Dokploy / Docker
 app.get('/api/health', async (req: Request, res: Response) => {

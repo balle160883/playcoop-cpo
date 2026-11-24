@@ -109,8 +109,8 @@
 
       <form id="login-form">
         <div class="input-group">
-          <label>Correo Electrónico</label>
-          <input type="email" id="login-email" placeholder="mercadotecnia@playcoop.com.mx" required>
+          <label>Usuario o Correo</label>
+          <input type="text" id="login-email" placeholder="admin o admin@playcoop.com.mx" required>
         </div>
         <div class="input-group">
           <label>Contraseña</label>
@@ -137,6 +137,7 @@
       <button class="tab-btn" onclick="switchTab('trivias-tab')">❓ Trivias RachaCoop</button>
       <button class="tab-btn" onclick="switchTab('events-tab')">📅 Eventos CPO</button>
       <button class="tab-btn" onclick="switchTab('ranking-tab')">🏆 Ranking del Juego</button>
+      <button id="users-tab-btn" class="tab-btn" style="display: none;" onclick="switchTab('users-tab')">👥 Gestión de Usuarios</button>
     </div>
 
     <div class="content-area">
@@ -305,6 +306,76 @@
           </table>
         </div>
       </div>
+
+      <!-- TAB 5: Gestión de Usuarios (Exclusivo Administrador) -->
+      <div id="users-tab" class="tab-content" style="display: none;">
+        <div class="panel-card">
+          <h3 id="user-form-title">Registrar Nuevo Usuario / Socio</h3>
+          <form id="user-manage-form">
+            <input type="hidden" id="manage-user-id" value="">
+            <div class="grid-form">
+              <div class="input-group">
+                <label>Nombre de Usuario (Login)</label>
+                <input type="text" id="manage-username" placeholder="juan.perez" required>
+              </div>
+              <div class="input-group">
+                <label>Nombre(s)</label>
+                <input type="text" id="manage-firstname" placeholder="Juan" required>
+              </div>
+              <div class="input-group">
+                <label>Apellido(s)</label>
+                <input type="text" id="manage-lastname" placeholder="Pérez González" required>
+              </div>
+              <div class="input-group">
+                <label>Rol de Acceso</label>
+                <select id="manage-role" required>
+                  <option value="3">Socio (App Móvil)</option>
+                  <option value="2">Mercadotecnia (CMS Videos/Trivias)</option>
+                  <option value="1">Administrador (Total)</option>
+                </select>
+              </div>
+              <div class="input-group" id="pwd-input-group">
+                <label>Contraseña</label>
+                <input type="password" id="manage-password" placeholder="Mínimo 6 caracteres">
+              </div>
+              <div class="input-group">
+                <label>Correo Electrónico (Opcional)</label>
+                <input type="email" id="manage-email" placeholder="socio@correo.com">
+              </div>
+              <div class="input-group">
+                <label>No. de Socio CPO (Opcional)</label>
+                <input type="text" id="manage-socio-id" placeholder="CPO-10492">
+              </div>
+              <div class="input-group">
+                <label>Teléfono (Opcional)</label>
+                <input type="text" id="manage-phone" placeholder="3312345678">
+              </div>
+            </div>
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+              <button type="submit" class="btn btn-primary" id="btn-save-user">Crear Usuario</button>
+              <button type="button" class="btn" id="btn-cancel-user-edit" style="display: none; background: var(--border-color); color: var(--text-color);" onclick="cancelUserEdit()">Cancelar Edición</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel-card">
+          <h3>Usuarios del Sistema y App Móvil</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Nombre Completo</th>
+                <th>Rol</th>
+                <th>Socio CPO</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -379,6 +450,15 @@
       loadTrivias();
       loadEvents();
       loadRanking();
+
+      // Mostrar pestaña de usuarios solo para administradores
+      const usersBtn = document.getElementById('users-tab-btn');
+      if (currentUser.role === 'administrador') {
+        usersBtn.style.display = 'inline-block';
+        loadUsers();
+      } else {
+        usersBtn.style.display = 'none';
+      }
     }
 
     function showLogin() {
@@ -551,6 +631,216 @@
           <td>Nivel ${r.max_level || 1}</td>
         </tr>
       `).join('');
+    }
+
+    // ==========================================
+    // MÓDULO DE GESTIÓN DE USUARIOS (CRUD & ESTADO)
+    // ==========================================
+    let editingUserId = null;
+
+    async function loadUsers() {
+      if (!authToken) return;
+      try {
+        const res = await fetch('/api/users', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (!res.ok) return;
+        const users = await res.json();
+        const tbody = document.getElementById('users-table-body');
+        
+        tbody.innerHTML = users.map(u => {
+          const isCurrentUser = currentUser && u.id === currentUser.id;
+          const statusBadge = u.is_active 
+            ? `<span class="badge" style="background: rgba(46, 204, 113, 0.2); color: #2ecc71;">Activo</span>`
+            : `<span class="badge" style="background: rgba(231, 76, 60, 0.2); color: #e74c3c;">Bloqueado</span>`;
+
+          const toggleBtn = isCurrentUser ? '' : `
+            <button class="btn" style="padding: 4px 8px; font-size: 11px; background: ${u.is_active ? 'rgba(231, 76, 60, 0.3)' : 'rgba(46, 204, 113, 0.3)'}; color: #fff;" onclick="toggleUserStatus(${u.id}, ${!u.is_active})">
+              ${u.is_active ? '🚫 Bloquear' : '✅ Desbloquear'}
+            </button>
+          `;
+
+          const resetBtn = `
+            <button class="btn" style="padding: 4px 8px; font-size: 11px; background: rgba(241, 196, 15, 0.3); color: #f1c40f;" onclick="resetPasswordPrompt(${u.id}, '${u.username}')">
+              🔑 Reset Clave
+            </button>
+          `;
+
+          const editBtn = `
+            <button class="btn" style="padding: 4px 8px; font-size: 11px; background: rgba(52, 152, 219, 0.3); color: #3498db;" onclick='prepareEditUser(${JSON.stringify(u)})'>
+              ✏️ Editar
+            </button>
+          `;
+
+          const deleteBtn = isCurrentUser ? '' : `
+            <button class="btn-delete" style="padding: 4px 8px; font-size: 11px;" onclick="deleteUser(${u.id}, '${u.username}')">
+              🗑️
+            </button>
+          `;
+
+          return `
+            <tr>
+              <td><strong>#${u.id}</strong></td>
+              <td><span style="font-family: monospace; color: var(--gold);">${u.username || '-'}</span></td>
+              <td>${u.first_name || ''} ${u.last_name || ''}</td>
+              <td><span class="badge badge-${u.role}">${u.role}</span></td>
+              <td>${u.socio_cpo_id || '-'}</td>
+              <td>${statusBadge}</td>
+              <td style="display: flex; gap: 5px; flex-wrap: wrap;">
+                ${editBtn}
+                ${toggleBtn}
+                ${resetBtn}
+                ${deleteBtn}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Error cargando usuarios:', err);
+      }
+    }
+
+    document.getElementById('user-manage-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('manage-username').value;
+      const firstName = document.getElementById('manage-firstname').value;
+      const lastName = document.getElementById('manage-lastname').value;
+      const roleId = parseInt(document.getElementById('manage-role').value, 10);
+      const email = document.getElementById('manage-email').value;
+      const phone = document.getElementById('manage-phone').value;
+      const socioCpoId = document.getElementById('manage-socio-id').value;
+      const password = document.getElementById('manage-password').value;
+
+      if (!editingUserId && (!password || password.length < 6)) {
+        showAlert('La contraseña debe tener al menos 6 caracteres', 'error');
+        return;
+      }
+
+      const payload = {
+        username,
+        firstName,
+        lastName,
+        roleId,
+        email: email || undefined,
+        phone: phone || undefined,
+        socioCpoId: socioCpoId || undefined
+      };
+
+      if (!editingUserId) {
+        payload.password = password;
+      }
+
+      const url = editingUserId ? `/api/users/${editingUserId}` : '/api/users';
+      const method = editingUserId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        showAlert(data.message || 'Operación exitosa', 'success');
+        cancelUserEdit();
+        loadUsers();
+      } else {
+        showAlert(data.error || 'Error al guardar usuario', 'error');
+      }
+    });
+
+    function prepareEditUser(u) {
+      editingUserId = u.id;
+      document.getElementById('user-form-title').innerText = `Editar Usuario: ${u.username}`;
+      document.getElementById('manage-user-id').value = u.id;
+      document.getElementById('manage-username').value = u.username || '';
+      document.getElementById('manage-firstname').value = u.first_name || '';
+      document.getElementById('manage-lastname').value = u.last_name || '';
+      document.getElementById('manage-role').value = u.role_id || 3;
+      document.getElementById('manage-email').value = u.email || '';
+      document.getElementById('manage-phone').value = u.phone || '';
+      document.getElementById('manage-socio-id').value = u.socio_cpo_id || '';
+      
+      document.getElementById('pwd-input-group').style.display = 'none';
+      document.getElementById('btn-save-user').innerText = 'Guardar Cambios';
+      document.getElementById('btn-cancel-user-edit').style.display = 'inline-block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function cancelUserEdit() {
+      editingUserId = null;
+      document.getElementById('user-form-title').innerText = 'Registrar Nuevo Usuario / Socio';
+      document.getElementById('user-manage-form').reset();
+      document.getElementById('pwd-input-group').style.display = 'block';
+      document.getElementById('btn-save-user').innerText = 'Crear Usuario';
+      document.getElementById('btn-cancel-user-edit').style.display = 'none';
+    }
+
+    async function toggleUserStatus(id, isActive) {
+      const action = isActive ? 'desbloquear/activar' : 'bloquear/suspender';
+      if (!confirm(`¿Estás seguro de que deseas ${action} este usuario?`)) return;
+
+      const res = await fetch(`/api/users/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ isActive })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        showAlert(data.message, 'success');
+        loadUsers();
+      } else {
+        showAlert(data.error || 'Error al cambiar estado', 'error');
+      }
+    }
+
+    async function resetPasswordPrompt(id, username) {
+      const newPassword = prompt(`Ingresa la nueva contraseña para el usuario "${username}":`);
+      if (!newPassword) return;
+      if (newPassword.length < 6) {
+        alert('La contraseña debe tener al menos 6 caracteres');
+        return;
+      }
+
+      const res = await fetch(`/api/users/${id}/reset-password`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ newPassword })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        showAlert(data.message, 'success');
+      } else {
+        showAlert(data.error || 'Error al cambiar contraseña', 'error');
+      }
+    }
+
+    async function deleteUser(id, username) {
+      if (!confirm(`¿Estás seguro de ELIMINAR PERMANENTEMENTE al usuario "${username}"? Esta acción borrará sus puntajes y datos.`)) return;
+
+      const res = await fetch(`/api/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        showAlert(data.message, 'success');
+        loadUsers();
+      } else {
+        showAlert(data.error || 'Error al eliminar usuario', 'error');
+      }
     }
 
     function showAlert(msg, type) {
