@@ -71,27 +71,46 @@ router.post(
   }
 );
 
-// Desactivar / Eliminar contenido multimedia (Admin o Mercadotecnia)
+// Eliminar / Desactivar contenido multimedia (Admin o Mercadotecnia)
+// Soporta eliminación física (permanent=true) o lógica (desactivar)
 router.delete(
   '/:id',
   authenticateJWT,
-  requireRoles(['admin', 'marketing']),
+  requireRoles(['admin', 'marketing', 'administrador']),
   async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const permanent = req.query.permanent === 'true';
 
     try {
-      const result = await query(
-        'UPDATE media_contents SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id',
-        [id]
-      );
+      if (permanent) {
+        // Eliminación permanente de la base de datos
+        const result = await query(
+          'DELETE FROM media_contents WHERE id = $1 RETURNING id, title',
+          [id]
+        );
 
-      if (result.rows.length === 0) {
-        res.status(404).json({ error: 'Contenido multimedia no encontrado' });
-        return;
+        if (result.rows.length === 0) {
+          res.status(404).json({ error: 'Contenido multimedia no encontrado' });
+          return;
+        }
+
+        res.json({ message: `Video "${result.rows[0].title}" eliminado permanentemente` });
+      } else {
+        // Desactivación lógica para ocultarlo de la app móvil
+        const result = await query(
+          'UPDATE media_contents SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id, title',
+          [id]
+        );
+
+        if (result.rows.length === 0) {
+          res.status(404).json({ error: 'Contenido multimedia no encontrado' });
+          return;
+        }
+
+        res.json({ message: 'Contenido retirado de la aplicación móvil exitosamente' });
       }
-
-      res.json({ message: 'Contenido desactivado de la aplicación móvil exitosamente' });
     } catch (err) {
+      console.error('[Error Delete Media]:', err);
       res.status(500).json({ error: 'Error al eliminar contenido' });
     }
   }

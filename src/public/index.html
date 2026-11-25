@@ -492,7 +492,10 @@
           <td><strong>${m.title}</strong></td>
           <td><a href="${m.file_url}" target="_blank" style="color: var(--gold)">Ver Archivo</a></td>
           <td>${new Date(m.created_at).toLocaleDateString()}</td>
-          <td><button class="btn-delete" onclick="deleteMedia(${m.id})">Desactivar</button></td>
+          <td style="display: flex; gap: 8px;">
+            <button class="btn" style="padding: 4px 8px; font-size: 11px; background: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.4);" onclick="deleteMedia(${m.id}, false)">Ocultar</button>
+            <button class="btn-delete" style="padding: 4px 8px; font-size: 11px;" onclick="deleteMedia(${m.id}, true)">🗑️ Borrar</button>
+          </td>
         </tr>
       `).join('');
     }
@@ -520,13 +523,25 @@
       }
     });
 
-    async function deleteMedia(id) {
-      if (!confirm('¿Deseas retirar este recurso de la app móvil?')) return;
-      await fetch(`/api/media/${id}`, {
+    async function deleteMedia(id, permanent = false) {
+      const msg = permanent 
+        ? '¿Estás seguro de ELIMINAR PERMANENTEMENTE este video de la base de datos y del servidor?' 
+        : '¿Deseas retirar/ocultar este recurso de la app móvil?';
+      if (!confirm(msg)) return;
+
+      const url = permanent ? `/api/media/${id}?permanent=true` : `/api/media/${id}`;
+      const res = await fetch(url, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${authToken}` }
       });
-      loadMedia();
+
+      const data = await res.json();
+      if (res.ok) {
+        showAlert(data.message || 'Operación exitosa', 'success');
+        loadMedia();
+      } else {
+        showAlert(data.error || 'Error al procesar la solicitud', 'error');
+      }
     }
 
     // Trivias
